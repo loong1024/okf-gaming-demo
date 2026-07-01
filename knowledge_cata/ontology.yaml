@@ -1,0 +1,774 @@
+# getapps — Data Layer (table, column nodes)
+
+# --- Tables ---
+
+- id: table.dwd_iap_order
+  type: table
+  name: IAP 订单明细表
+  table_name: dwd_iap_order
+  description: IAP 联运订单明细表，每笔订单一行。pay_type!=1 排除测试订单
+  grain: event
+  timestamp_column: date
+  primary_keys:
+  - order_id
+  partitions:
+  - date
+  database: iceberg_alsgprc_hadoop
+  owner: wenchao
+  schema: getapps
+- id: table.dwd_user_event_log
+  type: table
+  name: 用户事件日志表
+  table_name: dwd_user_event_log
+  description: GetApps 核心埋点明细表，记录所有 action_type 事件，用户标识为 gaid。所有 GA 
+    口径指标的数据源。支持渠道归因和场景分析。
+  grain: event
+  timestamp_column: date
+  primary_keys:
+  - gaid
+  - date
+  - action_type
+  database: iceberg_alsgprc_hadoop
+  partitions:
+  - date
+  owner: wenchao
+  schema: getapps
+- id: column.dwd_iap_order.order_id
+  type: column
+  name: order_id
+  table: table.dwd_iap_order
+  data_type: STRING
+  description: 订单唯一ID
+  entity: entity.order
+
+- id: column.dwd_iap_order.user_id
+  type: column
+  name: user_id
+  table: table.dwd_iap_order
+  data_type: STRING
+  description: 用户唯一ID
+  entity: entity.user
+
+- id: column.dwd_iap_order.pay_status
+  type: column
+  name: pay_status
+  table: table.dwd_iap_order
+  data_type: INT
+  description: 支付状态，0=拉起收银台 1=点击支付 2=支付成功 3=关单 5=已发起退款 6=退款成功
+
+- id: column.dwd_iap_order.pay_type
+  type: column
+  name: pay_type
+  table: table.dwd_iap_order
+  data_type: INT
+  description: 支付类型，1=测试订单需排除
+
+- id: column.dwd_iap_order.pay_mid
+  type: column
+  name: pay_mid
+  table: table.dwd_iap_order
+  data_type: STRING
+  description: 支付商户ID，H398305=Aptoide订单
+
+- id: column.dwd_iap_order.pay_usd
+  type: column
+  name: pay_usd
+  table: table.dwd_iap_order
+  data_type: DOUBLE
+  description: 订单美元金额
+
+- id: column.dwd_iap_order.income_usd
+  type: column
+  name: income_usd
+  table: table.dwd_iap_order
+  data_type: DOUBLE
+  description: 美元收入（扣税后）
+
+- id: column.dwd_iap_order.region
+  type: column
+  name: region
+  table: table.dwd_iap_order
+  data_type: STRING
+  description: 国家/地区
+
+- id: column.dwd_iap_order.package_name
+  type: column
+  name: package_name
+  table: table.dwd_iap_order
+  data_type: STRING
+  description: 应用包名
+
+- id: column.dwd_iap_order.currency
+  type: column
+  name: currency
+  table: table.dwd_iap_order
+  data_type: STRING
+  description: 币种
+
+- id: column.dwd_iap_order.date
+  type: column
+  name: date
+  table: table.dwd_iap_order
+  data_type: int
+  description: 日期分区
+- id: table.dwd_iap_event
+  name: IAP 事件明细表
+  type: table
+  grain: event
+  database: iceberg_alsgprc_hadoop
+  partitions:
+  - date
+  table_name: dwd_iap_event
+  description: IAP 联运事件明细表，记录支付相关事件
+  primary_keys:
+  - order_id
+  - event_type
+  timestamp_column: date
+  owner: jtan
+  schema: getapps
+- id: table.dm_app_stats_global_d
+  name: MIUI 应用统计日表
+  type: table
+  grain: daily_package
+  database: iceberg_alsgprc_hadoop.appstore
+  partitions:
+  - date
+  table_name: dm_app_stats_global_d
+  description: MIUI 系统级应用使用统计表，MIUI 口径 DAU 数据源。按 package_name 聚合，无用户级明细
+  primary_keys:
+  - package_name
+  - date
+  timestamp_column: date
+- id: table.dim_getapps_union_app
+  name: 应用维度表
+  type: table
+  grain: snapshot
+  database: iceberg_alsgprc_hadoop
+  partitions:
+  - date
+  table_name: dim_getapps_union_app
+  description: GetApps 应用维度表，包含应用基础信息
+  primary_keys:
+  - package_name
+  timestamp_column: date
+  owner: wenchao
+  schema: getapps
+- id: table.dws_getapps_alldimension_di
+  name: GetApps 全维度汇总表
+  type: table
+  grain: daily_dimension
+  database: iceberg_alsgprc_hadoop
+  partitions:
+  - date
+  table_name: dws_getapps_alldimension_di
+  description: DWS 层全维度预聚合表，按 lo x channel_level1 x cur_page_type x date 
+    粒度聚合。字段为 PV 级预聚合，SUM 到更粗粒度会重复计数，不可直接用于精确 UV 计算
+  timestamp_column: date
+  schema: appstore
+  owner: wenchao
+- id: table.dws_channel_page_d
+  name: 渠道页面日表
+  type: table
+  grain: daily_channel_page
+  database: iceberg_alsgprc_hadoop
+  partitions:
+  - date
+  table_name: dws_channel_page_d
+  description: 渠道×页面维度的 DAU 快速查询表。直接 SUM UV 会因跨页面重复计数而偏高
+  timestamp_column: date
+  owner: wenchao
+  schema: appstore
+- id: table.dws_getapps_search_core_di
+  name: 搜索核心日表
+  type: table
+  grain: daily
+  database: iceberg_alsgprc_hadoop
+  partitions:
+  - date
+  table_name: dws_getapps_search_core_di
+  description: 搜索核心指标汇总表。粒度：lo × market_v × channel × 
+    date。包含搜索UV/PV、搜索结果页曝光、点击、安装等核心搜索漏斗指标
+  timestamp_column: date
+  owner: jimingjun
+  schema: getapps
+- id: table.dws_iap_order_di
+  name: IAP 订单汇总表
+  type: table
+  grain: daily_dimension
+  database: iceberg_alsgprc_hadoop
+  partitions:
+  - date
+  table_name: dws_iap_order_di
+  description: 联运支付 DWS 层汇总表，仅存在于新加坡（SG）集群。paid_price 字段在 appstore 库额外含 
+    payment_status=4 条件，与 DWD 层口径存在系统性偏差
+  timestamp_column: date
+  schema: appstore
+  owner: wenchao
+- id: table.dws_minicard_download_risk_d
+  name: Minicard 下载风险日表
+  type: table
+  grain: daily
+  database: iceberg_alsgprc_hadoop
+  partitions:
+  - date
+  table_name: dws_minicard_download_risk_d
+  description: Minicard 下载风险监控表
+  timestamp_column: date
+  owner: wenchao
+  schema: getapps
+- id: table.dws_c_core_data
+  name: C端核心数据表
+  type: table
+  grain: daily
+  database: iceberg_alsgprc_hadoop
+  partitions:
+  - date
+  table_name: dws_c_core_data
+  description: C端核心指标汇总表
+  timestamp_column: date
+  owner: wenchao
+  schema: appstore
+- id: table.dws_store_stat_weekly
+  name: 商店统计周表
+  type: table
+  grain: weekly
+  database: iceberg_alsgprc_hadoop
+  partitions:
+  - date
+  table_name: dws_store_stat_weekly
+  description: 商店核心指标周度汇总表
+  timestamp_column: date
+  owner: wenchao
+  schema: appstore
+- id: column.dwd_user_event_log.gaid
+  name: gaid
+  type: column
+  table: table.dwd_user_event_log
+  entity: entity.user
+  data_type: STRING
+  description: 用户唯一标识（Google Advertising ID）
+- id: column.dwd_user_event_log.date
+  name: date
+  type: column
+  table: table.dwd_user_event_log
+  data_type: INT
+  description: 日期分区，格式 yyyyMMdd
+- id: column.dwd_user_event_log.action_type
+  name: action_type
+  type: column
+  table: table.dwd_user_event_log
+  data_type: STRING
+  description: 
+    事件类型：application_launch/item_click/item_exposure/download_install/search 等
+- id: column.dwd_user_event_log.package_name
+  name: package_name
+  type: column
+  table: table.dwd_user_event_log
+  entity: entity.app
+  data_type: STRING
+  description: 应用包名
+- id: column.dwd_user_event_log.first_page_type
+  name: first_page_type
+  type: column
+  table: table.dwd_user_event_log
+  data_type: STRING
+  description: 首次页面类型，用于渠道归因和 DAU 口径过滤
+- id: column.dwd_user_event_log.cur_page_type
+  name: cur_page_type
+  type: column
+  table: table.dwd_user_event_log
+  data_type: STRING
+  description: 当前页面类型，用于场景归因
+- id: column.dwd_user_event_log.pre_page_type
+  name: pre_page_type
+  type: column
+  table: table.dwd_user_event_log
+  data_type: STRING
+  description: 上一页面类型，用于详情页回溯归因
+- id: column.dwd_user_event_log.cur_page_category
+  name: cur_page_category
+  type: column
+  table: table.dwd_user_event_log
+  data_type: STRING
+  description: 当前页面分类，用于 minicard 卡片类型判断
+- id: column.dwd_user_event_log.install_status
+  name: install_status
+  type: column
+  table: table.dwd_user_event_log
+  data_type: STRING
+  description: 安装状态：download_request/download_success/install_success/activate 等
+- id: column.dwd_user_event_log.install_type
+  name: install_type
+  type: column
+  table: table.dwd_user_event_log
+  data_type: STRING
+  description: 安装类型：manual_install/auto_install
+- id: column.dwd_user_event_log.first_launch_day
+  name: first_launch_day
+  type: column
+  table: table.dwd_user_event_log
+  data_type: string
+  description: 商店首次启动日期，用于新增用户判断
+- id: column.dwd_user_event_log.from_page_type
+  name: from_page_type
+  type: column
+  table: table.dwd_user_event_log
+  data_type: STRING
+  description: 来源页面类型（已内置详情页回溯逻辑）
+- id: column.dwd_user_event_log.channel_level1
+  name: channel_level1
+  type: column
+  table: table.dwd_user_event_log
+  data_type: STRING
+  description: 一级渠道
+- id: column.dwd_user_event_log.channel_key
+  name: channel_key
+  type: column
+  table: table.dwd_user_event_log
+  data_type: STRING
+  description: 渠道标识，ias/isa 用于 Indus 口径
+- id: column.dwd_user_event_log.rom_sku
+  name: rom_sku
+  type: column
+  table: table.dwd_user_event_log
+  data_type: STRING
+  description: ROM SKU，in=印度 Indus 版本
+- id: column.dwd_user_event_log.launch_ref
+  name: launch_ref
+  type: column
+  table: table.dwd_user_event_log
+  data_type: STRING
+  description: 启动来源引用
+- id: column.dwd_user_event_log.launch_pkg
+  name: launch_pkg
+  type: column
+  table: table.dwd_user_event_log
+  data_type: STRING
+  description: 启动来源包名
+- id: column.dwd_user_event_log.lo
+  name: lo
+  type: column
+  table: table.dwd_user_event_log
+  data_type: STRING
+  description: 国家代码
+- id: column.dwd_user_event_log.model
+  name: model
+  type: column
+  table: table.dwd_user_event_log
+  data_type: STRING
+  description: 设备型号
+- id: column.dwd_user_event_log.fail_reason
+  name: fail_reason
+  type: column
+  table: table.dwd_user_event_log
+  data_type: STRING
+  description: 失败原因码，3=用户取消 68=用户暂停
+- id: table.ads_getapps_app_retain_stay_d_v2
+  name: 应用保有率预计算表
+  type: table
+  grain: daily_app_country
+  schema: getapps
+  partitions:
+  - date
+  table_name: ads_getapps_app_retain_stay_d_v2
+  description: ADS 层应用保有率预计算表，基于 MIUIBI 安装事件体系（imeimd5 标识）。retain_stay_n 
+    为保有天数，retain_denominator 为基准日新增安装数，retain_numerator 为第 N 天保有数。已过滤日活 < 100 
+    或新增 < 1000 的包
+  timestamp_column: date
+  owner: zhangzhening
+  database: iceberg_alsgprc_hadoop
+- id: table.ads_getapps_app_act_retain_stay_d_v2
+  name: 应用活跃留存预计算表
+  type: table
+  grain: daily_app_country
+  schema: getapps
+  partitions:
+  - date
+  table_name: ads_getapps_app_act_retain_stay_d_v2
+  description: ADS 层应用活跃留存预计算表，retain_stay_n 枚举值为 2/7/30（不含 N=1 
+    次日留存），retain_denominator 为基准日活跃用户数，retain_numerator 为第 N 天留存用户数
+  timestamp_column: date
+  owner: zhangzhening
+  database: iceberg_alsgprc_hadoop
+- id: table.dim_appstore_app_country_snapshot_d
+  name: 应用国家维度快照表
+  type: table
+  layer: DIM
+  owner: wenchao
+  database: appstore
+  schedule: 每天 02:30
+  full_name: iceberg_alsgprc_hadoop.appstore.dim_appstore_app_country_snapshot_d
+  partition: date (YYYYMMDD)
+  description: 
+    GetApps(小米应用商店)应用维度快照表，按国家维度记录每个应用每天的完整属性信息。包含应用基础信息(名称/包名/开发者/版本)、上架状态(GA/GP)、分类标签、质量分级(S/A/B/C/D/E)、联运类型、版本一致性、高风险标记、系统应用类型等维度，以及当日首次启动用户数指标。
+  granularity: appid × country × date
+  key_metrics:
+  - day_first_launch
+  - total_day_first_launch
+  key_dimensions:
+  - country
+  - ga_status
+  - intlcategory_level1
+  - app_level
+  - payment_sdk
+  - system_app_type
+- id: table.dwd_appstore_active_info_di
+  name: dwd_appstore_active_info_di
+  type: table
+  grain: 一行 = 一次激活上报
+  schema: appstore
+  database: iceberg_alsgprc_hadoop
+  table_name: dwd_appstore_active_info_di
+  description: 服务器激活上报表，记录应用激活上报日志
+  owner: wenchao
+- id: table.dwd_appstore_updateinfo_di
+  name: dwd_appstore_updateinfo_di
+  type: table
+  grain: 一行 = 一次检查更新/下载请求
+  schema: appstore
+  database: iceberg_alsgprc_hadoop
+  table_name: dwd_appstore_updateinfo_di
+  description: 服务器检查更新和下载表，记录应用检查更新及下载接口日志
+  owner: wenchao
+- id: column.dws_getapps_alldimension_di.lo
+  name: lo
+  type: column
+  table: table.dws_getapps_alldimension_di
+  data_type: varchar
+  description: 国家代码
+- id: column.dws_getapps_alldimension_di.channel_level1
+  name: channel_level1
+  type: column
+  table: table.dws_getapps_alldimension_di
+  data_type: varchar
+  description: 一级渠道
+- id: column.dws_getapps_alldimension_di.cur_page_type
+  name: cur_page_type
+  type: column
+  table: table.dws_getapps_alldimension_di
+  data_type: varchar
+  description: 当前页面类型
+- id: column.dws_getapps_alldimension_di.package_name
+  name: package_name
+  type: column
+  table: table.dws_getapps_alldimension_di
+  data_type: varchar
+  description: 应用包名
+- id: column.dws_getapps_alldimension_di.date
+  name: date
+  type: column
+  table: table.dws_getapps_alldimension_di
+  data_type: integer
+  description: 日期分区
+- id: column.dws_getapps_alldimension_di.launch
+  name: launch
+  type: column
+  table: table.dws_getapps_alldimension_di
+  data_type: integer
+  description: 启动PV
+- id: column.dws_getapps_alldimension_di.page_exposure
+  name: page_exposure
+  type: column
+  table: table.dws_getapps_alldimension_di
+  data_type: integer
+  description: 页面曝光PV
+- id: column.dws_getapps_alldimension_di.item_exposure
+  name: item_exposure
+  type: column
+  table: table.dws_getapps_alldimension_di
+  data_type: integer
+  description: 内容曝光PV
+- id: column.dws_getapps_alldimension_di.item_click
+  name: item_click
+  type: column
+  table: table.dws_getapps_alldimension_di
+  data_type: integer
+  description: 内容点击PV
+- id: column.dws_getapps_alldimension_di.download_request
+  name: download_request
+  type: column
+  table: table.dws_getapps_alldimension_di
+  data_type: integer
+  description: 下载请求PV
+- id: column.dws_getapps_alldimension_di.download_success
+  name: download_success
+  type: column
+  table: table.dws_getapps_alldimension_di
+  data_type: integer
+  description: 下载成功PV
+- id: column.dws_getapps_alldimension_di.install_success
+  name: install_success
+  type: column
+  table: table.dws_getapps_alldimension_di
+  data_type: integer
+  description: 安装成功PV
+- id: column.dws_getapps_alldimension_di.activate
+  name: activate
+  type: column
+  table: table.dws_getapps_alldimension_di
+  data_type: integer
+  description: 激活PV
+- id: column.dws_getapps_alldimension_di.catalog
+  name: catalog
+  type: column
+  table: table.dws_getapps_alldimension_di
+  data_type: varchar
+  description: 集群标识
+- id: column.dws_getapps_alldimension_di.first_page_type
+  name: first_page_type
+  type: column
+  table: table.dws_getapps_alldimension_di
+  data_type: varchar
+  description: 首次页面类型
+- id: column.dws_getapps_alldimension_di.model
+  name: model
+  type: column
+  table: table.dws_getapps_alldimension_di
+  data_type: varchar
+  description: 设备型号
+- id: column.dws_c_core_data.date
+  name: date
+  type: column
+  table: table.dws_c_core_data
+  data_type: integer
+  description: 日期分区
+- id: column.dws_c_core_data.catalog
+  name: catalog
+  type: column
+  table: table.dws_c_core_data
+  data_type: varchar
+  description: 集群标识
+- id: column.dws_c_core_data.lo
+  name: lo
+  type: column
+  table: table.dws_c_core_data
+  data_type: varchar
+  description: 国家代码
+- id: column.dws_c_core_data.ga_dau
+  name: ga_dau
+  type: column
+  table: table.dws_c_core_data
+  data_type: bigint
+  description: GA口径DAU
+- id: column.dws_c_core_data.miui_dau
+  name: miui_dau
+  type: column
+  table: table.dws_c_core_data
+  data_type: bigint
+  description: MIUI口径DAU
+- id: column.dws_c_core_data.install_success_puv_ads
+  name: install_success_puv_ads
+  type: column
+  table: table.dws_c_core_data
+  data_type: bigint
+  description: 安装成功PUV(ADS口径)
+- id: column.dws_c_core_data.item_exp_pv
+  name: item_exp_pv
+  type: column
+  table: table.dws_c_core_data
+  data_type: bigint
+  description: 内容曝光PV
+- id: column.dws_c_core_data.item_click_pv
+  name: item_click_pv
+  type: column
+  table: table.dws_c_core_data
+  data_type: bigint
+  description: 内容点击PV
+- id: column.dws_c_core_data.download_request_pv
+  name: download_request_pv
+  type: column
+  table: table.dws_c_core_data
+  data_type: bigint
+  description: 下载请求PV
+- id: column.dws_c_core_data.install_success_pv
+  name: install_success_pv
+  type: column
+  table: table.dws_c_core_data
+  data_type: bigint
+  description: 安装成功PV
+- id: column.dws_c_core_data.retention_dau
+  name: retention_dau
+  type: column
+  table: table.dws_c_core_data
+  data_type: bigint
+  description: 次留DAU
+- id: column.dws_c_core_data.newuser_dau
+  name: newuser_dau
+  type: column
+  table: table.dws_c_core_data
+  data_type: bigint
+  description: 新增DAU
+- id: column.dws_iap_order_di.date
+  name: date
+  type: column
+  table: table.dws_iap_order_di
+  data_type: integer
+  description: 日期分区
+- id: column.dws_iap_order_di.region
+  name: region
+  type: column
+  table: table.dws_iap_order_di
+  data_type: varchar
+  description: 国家/地区
+- id: column.dws_iap_order_di.currency
+  name: currency
+  type: column
+  table: table.dws_iap_order_di
+  data_type: varchar
+  description: 币种
+- id: column.dws_iap_order_di.package_name
+  name: package_name
+  type: column
+  table: table.dws_iap_order_di
+  data_type: varchar
+  description: 应用包名
+- id: column.dws_iap_order_di.all_order
+  name: all_order
+  type: column
+  table: table.dws_iap_order_di
+  data_type: bigint
+  description: 拉起收银台订单数
+- id: column.dws_iap_order_di.click_order
+  name: click_order
+  type: column
+  table: table.dws_iap_order_di
+  data_type: bigint
+  description: 点击支付订单数
+- id: column.dws_iap_order_di.paid_order
+  name: paid_order
+  type: column
+  table: table.dws_iap_order_di
+  data_type: bigint
+  description: 支付成功订单数
+- id: column.dws_iap_order_di.all_user
+  name: all_user
+  type: column
+  table: table.dws_iap_order_di
+  data_type: bigint
+  description: 拉起收银台UV
+- id: column.dws_iap_order_di.paid_user
+  name: paid_user
+  type: column
+  table: table.dws_iap_order_di
+  data_type: bigint
+  description: 支付成功UV
+- id: column.dws_iap_order_di.paid_price
+  name: paid_price
+  type: column
+  table: table.dws_iap_order_di
+  data_type: double
+  description: 支付金额(appstore库额外含 payment_status=4)
+- id: column.dws_iap_order_di.income
+  name: income
+  type: column
+  table: table.dws_iap_order_di
+  data_type: double
+  description: 收入(扣税后)
+- id: column.dws_iap_order_di.catalog
+  name: catalog
+  type: column
+  table: table.dws_iap_order_di
+  data_type: varchar
+  description: 集群标识
+- id: column.dws_iap_order_di.appname
+  name: appname
+  type: column
+  table: table.dws_iap_order_di
+  data_type: varchar
+  description: 应用名称
+- id: column.dws_minicard_download_risk_d.date
+  name: date
+  type: column
+  table: table.dws_minicard_download_risk_d
+  data_type: integer
+  description: 日期分区
+- id: column.dws_minicard_download_risk_d.lo
+  name: lo
+  type: column
+  table: table.dws_minicard_download_risk_d
+  data_type: varchar
+  description: 国家代码
+- id: column.dws_minicard_download_risk_d.package_name
+  name: package_name
+  type: column
+  table: table.dws_minicard_download_risk_d
+  data_type: varchar
+  description: 应用包名
+- id: column.dws_minicard_download_risk_d.level
+  name: level
+  type: column
+  table: table.dws_minicard_download_risk_d
+  data_type: varchar
+  description: 风险等级
+- id: column.dws_minicard_download_risk_d.download_request_cnt
+  name: download_request_cnt
+  type: column
+  table: table.dws_minicard_download_risk_d
+  data_type: bigint
+  description: 下载请求次数
+- id: column.dws_minicard_download_risk_d.install_success_cnt
+  name: install_success_cnt
+  type: column
+  table: table.dws_minicard_download_risk_d
+  data_type: bigint
+  description: 安装成功次数
+- id: column.dws_getapps_search_core_di.date
+  name: date
+  type: column
+  table: table.dws_getapps_search_core_di
+  data_type: integer
+  description: 日期分区
+- id: column.dws_getapps_search_core_di.lo
+  name: lo
+  type: column
+  table: table.dws_getapps_search_core_di
+  data_type: varchar
+  description: 国家代码
+- id: column.dws_getapps_search_core_di.dau
+  name: dau
+  type: column
+  table: table.dws_getapps_search_core_di
+  data_type: bigint
+  description: DAU
+- id: column.dws_getapps_search_core_di.search_uv
+  name: search_uv
+  type: column
+  table: table.dws_getapps_search_core_di
+  data_type: bigint
+  description: 搜索UV
+- id: column.dws_getapps_search_core_di.search_pv
+  name: search_pv
+  type: column
+  table: table.dws_getapps_search_core_di
+  data_type: bigint
+  description: 搜索PV
+- id: column.dws_getapps_search_core_di.channel_level1
+  name: channel_level1
+  type: column
+  table: table.dws_getapps_search_core_di
+  data_type: varchar
+  description: 一级渠道
+- id: column.dws_channel_page_d.date
+  name: date
+  type: column
+  table: table.dws_channel_page_d
+  data_type: integer
+  description: 日期分区
+- id: column.dws_channel_page_d.lo
+  name: lo
+  type: column
+  table: table.dws_channel_page_d
+  data_type: varchar
+  description: 国家代码
+- id: column.dws_channel_page_d.channel
+  name: channel
+  type: column
+  table: table.dws_channel_page_d
+  data_type: varchar
+  description: 渠道
+- id: column.dws_channel_page_d.cur_page_type
+  name: cur_page_type
+  type: column
+  table: table.dws_channel_page_d
+  data_type: varchar
+  description: 当前

@@ -1,0 +1,13 @@
+scope: kb.lufeng-demo.us-central1.xiaomi-ontology
+snapshot:
+  entries:
+    - dataplex-types.global.generic
+  aspects:
+    - dataplex-types.global.generic
+    - dataplex-types.global.overview
+publishing:
+  entries:
+    - dataplex-types.global.generic
+  aspects:
+    - dataplex-types.global.generic
+    - dataplex-types.global.overview
