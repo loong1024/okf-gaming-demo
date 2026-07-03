@@ -173,7 +173,7 @@ export default function App() {
                     </div>
                     <h3 className="demo-info-card-title">演示场景</h3>
                     <p className="demo-info-card-text">
-                      一家手游公司（Flood-It! 益智游戏）使用 Google Cloud 管理其分析数据资产。数据分析师和产品经理可以通过自然语言搜索发现任意数据表，无需了解表名或编写 SQL。
+                      一家手游公司（Flood-It! 益智游戏）使用 Google Cloud 管理其分析数据资产。数据分析师、产品经理以及 AI Agent 都可以通过搜索快速发现任意数据表，无需了解表名或编写 SQL。
                     </p>
                   </div>
 
@@ -185,7 +185,7 @@ export default function App() {
                     </div>
                     <h3 className="demo-info-card-title">数据资产</h3>
                     <p className="demo-info-card-text">
-                      涵盖 <strong>17 张 BigQuery 数据表</strong>、<strong>168 个字段</strong>，分为 4 个数据层：原始事件层（GA4/Firebase 打点）、聚合指标层（DAU、收入、留存、漏斗）、维度表、以及 ML 应用层（LTV 预测、流失风险、A/B 实验结果）。
+                      涵盖 <strong>17 张数据表</strong>、<strong>168 个字段</strong>，分为 4 个数据层：原始事件层（GA4/Firebase 打点）、聚合指标层（DAU、收入、留存、漏斗）、维度表、以及 ML 应用层（LTV 预测、流失风险、A/B 实验结果）。
                     </p>
                   </div>
 
@@ -197,7 +197,7 @@ export default function App() {
                     </div>
                     <h3 className="demo-info-card-title">涉及的 Google Cloud 服务</h3>
                     <p className="demo-info-card-text">
-                      基于 <strong>Knowledge Catalog</strong> 提供语义搜索能力，元数据通过 <strong>OKF（Open Knowledge Format）</strong>标准格式定义。应用部署在 <strong>Cloud Run</strong> 上，数据存储于 <strong>BigQuery</strong>。
+                      基于 <strong>Knowledge Catalog</strong> 提供语义搜索能力，元数据通过 <strong>OKF（Open Knowledge Format）</strong>标准格式定义。应用部署在 <strong>Cloud Run</strong> 上，支持对接任意数据仓库。
                     </p>
                   </div>
 
