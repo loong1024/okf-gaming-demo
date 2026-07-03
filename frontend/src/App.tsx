@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import type { SearchResult, ContextResponse } from './types';
 import { searchCatalog, getContext } from './utils/api';
 import SearchBar from './components/SearchBar';
@@ -6,6 +6,7 @@ import ResultsList from './components/ResultsList';
 import ContextDetail from './components/ContextDetail';
 import { SearchSkeleton, ContextSkeleton } from './components/LoadingState';
 import ErrorToast from './components/ErrorToast';
+import ArchitectureDiagram from './components/ArchitectureDiagram';
 
 const suggestedQueries = [
   'player retention analysis',
@@ -26,7 +27,16 @@ export default function App() {
   const [error, setError] = useState<string | null>(null);
   const [hasSearched, setHasSearched] = useState(false);
 
-  const handleSearch = useCallback(async (searchQuery: string) => {
+  const goHome = useCallback(() => {
+    setQuery('');
+    setResults([]);
+    setSelectedEntry(null);
+    setContext(null);
+    setHasSearched(false);
+    setError(null);
+  }, []);
+
+  const performSearch = useCallback(async (searchQuery: string) => {
     setQuery(searchQuery);
     setIsSearching(true);
     setError(null);
@@ -45,7 +55,13 @@ export default function App() {
     }
   }, []);
 
+  const handleSearch = useCallback(async (searchQuery: string) => {
+    window.history.pushState({ view: 'results', query: searchQuery }, '');
+    performSearch(searchQuery);
+  }, [performSearch]);
+
   const handleSelectResult = useCallback(async (result: SearchResult) => {
+    window.history.pushState({ view: 'detail' }, '');
     setSelectedEntry(result);
     setIsLoadingContext(true);
     setError(null);
@@ -62,19 +78,31 @@ export default function App() {
   }, []);
 
   const handleCloseContext = useCallback(() => {
-    setSelectedEntry(null);
-    setContext(null);
-    setIsLoadingContext(false);
+    window.history.back();
   }, []);
 
   const handleGoHome = useCallback(() => {
-    setQuery('');
-    setResults([]);
-    setSelectedEntry(null);
-    setContext(null);
-    setHasSearched(false);
-    setError(null);
-  }, []);
+    window.history.pushState({ view: 'home' }, '');
+    goHome();
+  }, [goHome]);
+
+  useEffect(() => {
+    window.history.replaceState({ view: 'home' }, '');
+
+    const handlePopState = (e: PopStateEvent) => {
+      const state = e.state;
+      if (!state || state.view === 'home') {
+        goHome();
+      } else if (state.view === 'results') {
+        setSelectedEntry(null);
+        setContext(null);
+        setIsLoadingContext(false);
+      }
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, [goHome]);
 
   const handleDismissError = useCallback(() => {
     setError(null);
@@ -186,6 +214,9 @@ export default function App() {
                   </div>
                 </div>
               </div>
+
+              {/* Architecture Diagram */}
+              <ArchitectureDiagram />
             </div>
           )}
 
